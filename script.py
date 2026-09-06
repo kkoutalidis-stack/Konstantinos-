@@ -11,7 +11,7 @@ import requests
 from playwright.sync_api import sync_playwright
 
 URL = "https://kiting.live/kitesurf-spot/paroskite-paros-greece"
-THRESHOLD_KNOTS = 5
+THRESHOLD_KNOTS = 25
 NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "")
 STATE_FILE = "state.json"
 
