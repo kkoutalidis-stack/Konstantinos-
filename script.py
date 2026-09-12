@@ -52,17 +52,23 @@ def save_state(state: dict) -> None:
         json.dump(state, f)
 
 
-def send_notification(speed: float) -> None:
+def send_notification(speed: float, rising: bool) -> None:
     if not NTFY_TOPIC:
         print("NTFY_TOPIC not set — skipping notification (would have fired).")
         return
+    if rising:
+        message = f"Άνεμος στο Paros kite spot: {speed:.1f} kt (πάνω από {THRESHOLD_KNOTS}kt)"
+        tags = "dash"
+    else:
+        message = f"Ο άνεμος στο Paros έπεσε στα {speed:.1f} kt (κάτω από {THRESHOLD_KNOTS}kt)"
+        tags = "arrow_down_small"
     requests.post(
         f"https://ntfy.sh/{NTFY_TOPIC}",
-        data=f"Άνεμος στο Paros kite spot: {speed:.1f} kt (πάνω από {THRESHOLD_KNOTS}kt)".encode("utf-8"),
+        data=message.encode("utf-8"),
         headers={
             "Title": "Wind Alert - Paros".encode("utf-8"),
             "Priority": "high",
-            "Tags": "dash",
+            "Tags": tags,
         },
         timeout=10,
     )
@@ -75,14 +81,15 @@ def main() -> None:
     state = load_state()
 
     if speed >= THRESHOLD_KNOTS and not state.get("alerted"):
-        send_notification(speed)
+        send_notification(speed, rising=True)
         state["alerted"] = True
         save_state(state)
-        print("Alert sent, state updated.")
+        print("Rising alert sent, state updated.")
     elif speed < THRESHOLD_KNOTS and state.get("alerted"):
+        send_notification(speed, rising=False)
         state["alerted"] = False
         save_state(state)
-        print("Wind dropped back below threshold, state reset.")
+        print("Falling alert sent, state reset.")
     else:
         print("No state change, no notification needed.")
 
