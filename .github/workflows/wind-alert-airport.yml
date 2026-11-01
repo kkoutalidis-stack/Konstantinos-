@@ -1,0 +1,46 @@
+name: Wind Alert - Paros Airport
+
+on:
+  schedule:
+    # Το αεροδρόμιο βγάζει μέτρηση στις :20 και :50 -> ελέγχουμε λίγο μετά
+    - cron: "25,55 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  check-wind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run wind check
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python wind_airport.py
+
+      - name: Commit updated state
+        # Ό,τι κι αν γίνει εδώ, δεν κάνει το job να αποτύχει (άρα κανένα email)
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          [ -f state_airport.json ] || exit 0
+          git add state_airport.json
+          if git diff --staged --quiet; then exit 0; fi
+          git commit -m "update airport wind alert state"
+          for i in 1 2 3; do
+            git pull --rebase && git push && exit 0
+            sleep 5
+          done
