@@ -4,7 +4,7 @@ on:
   schedule:
     # Το αεροδρόμιο βγάζει μέτρηση στις :20 και :50 -> ελέγχουμε λίγο μετά
     - cron: "25,55 5-18 * * *"
-    workflow_dispatch: {}
+  workflow_dispatch: {}
 
 permissions:
   contents: write
