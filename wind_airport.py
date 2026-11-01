@@ -23,6 +23,8 @@ THRESHOLD_KNOTS = 20
 HYSTERESIS_KNOTS = 2          # πέφτει "κάτω" στους 18, για να μη χτυπάει συνέχεια γύρω στους 20
 MAX_OBS_AGE_MIN = 90          # μέτρηση παλαιότερη από αυτό δεν θεωρείται τρέχουσα
 NO_DATA_HOURS = 6             # μετά από τόσες ώρες χωρίς δεδομένα -> μία ειδοποίηση
+ACTIVE_FROM = 8               # ώρα Ελλάδας: ελέγχει από τις 08:00...
+ACTIVE_TO = 20                # ...έως τις 20:00
 
 NTFY_TOPIC = os.environ.get("NTFY_TOPIC", "")
 STATE_FILE = "state_airport.json"
@@ -146,6 +148,17 @@ def main() -> None:
     now = datetime.now(timezone.utc)
     state = load_state()
     original = json.dumps(state, sort_keys=True)
+
+    # Εκτός ωραρίου: καμία ειδοποίηση. Μηδενίζει την κατάσταση, ώστε αν το πρωί
+    # φυσάει ήδη, να έρθει ειδοποίηση με τον πρώτο έλεγχο.
+    local_hour = now.astimezone(ZoneInfo("Europe/Athens")).hour
+    if not (ACTIVE_FROM <= local_hour < ACTIVE_TO):
+        print(f"Outside active hours ({ACTIVE_FROM}:00-{ACTIVE_TO}:00), skipping.")
+        state["alerted"] = False
+        state["fail_count"] = 0
+        if json.dumps(state, sort_keys=True) != original:
+            save_state(state)
+        return
 
     try:
         obs = get_observation(now)
